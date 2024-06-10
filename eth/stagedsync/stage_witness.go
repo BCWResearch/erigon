@@ -60,7 +60,7 @@ func RecordFuncTime(blockNr uint64, stagestate string, err bool, start time.Time
 		logger.Info("`%s` on block %d took %fs (%s to %s)", stagestate, blockNr, end.Sub(start).Seconds(), start, end)
 	}
 
-	outpath := os.Getenv("WitnessOutDurationCsvPath")
+	outpath := os.Getenv("WITNESS_GEN_DURATION_CSV")
 
 	if outpath == "" {
 		return
