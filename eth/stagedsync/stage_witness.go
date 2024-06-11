@@ -44,9 +44,9 @@ type WitnessStore struct {
 	GetHashFn       func(n uint64) libcommon.Hash
 }
 
-func logStageStart(stagestate string, blockNr uint64, logger log.Logger) time.Time {
+func logStageStart(stageState string, blockNr uint64, logger log.Logger) time.Time {
 	start := time.Now()
-	logger.Info("`%s` on block %d starting at %s")
+	logger.Info("`%s` on block %d starting at %s", stageState, blockNr, start)
 	return start
 }
 
