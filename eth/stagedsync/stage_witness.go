@@ -46,7 +46,7 @@ type WitnessStore struct {
 
 func logStageStart(stageState string, blockNr uint64, logger log.Logger) time.Time {
 	start := time.Now()
-	logger.Info("`%s` on block %d starting at %s", stageState, blockNr, start)
+	logger.Info(fmt.Sprintf("`%s` on block %d starting at %s", stageState, blockNr, start))
 	return start
 }
 
@@ -55,9 +55,9 @@ func logStageStart(stageState string, blockNr uint64, logger log.Logger) time.Ti
 func RecordFuncTime(blockNr uint64, stagestate string, err bool, start time.Time, end time.Time, logger log.Logger) {
 
 	if err {
-		logger.Info("`%s` either had an error or terminated early on block %d took %fs (%s to %s)", stagestate, blockNr, end.Sub(start).Seconds(), start, end)
+		logger.Info(fmt.Sprintf("`%s` either had an error or terminated early on block %d took %fs (%s to %s)", stagestate, blockNr, end.Sub(start).Seconds(), start, end))
 	} else {
-		logger.Info("`%s` on block %d took %fs (%s to %s)", stagestate, blockNr, end.Sub(start).Seconds(), start, end)
+		logger.Info(fmt.Sprintf("`%s` on block %d took %fs (%s to %s)", stagestate, blockNr, end.Sub(start).Seconds(), start, end))
 	}
 
 	outpath := os.Getenv("WITNESS_GEN_DURATION_CSV")
@@ -68,7 +68,7 @@ func RecordFuncTime(blockNr uint64, stagestate string, err bool, start time.Time
 		// Open the CSV file, create it if it doesn't exist
 		file, err := os.OpenFile(outpath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			logger.Error("Error opening / creating file: %v\n", err)
+			logger.Error(fmt.Sprintf("Error opening / creating file: %v\n", err))
 			return
 		}
 		defer file.Close()
@@ -76,7 +76,7 @@ func RecordFuncTime(blockNr uint64, stagestate string, err bool, start time.Time
 		// Check if the file is empty to determine if we need to write the header
 		fileInfo, err := os.Stat(outpath)
 		if err != nil {
-			logger.Error("Error stating file: %v\n", err)
+			logger.Error(fmt.Sprintf("Error stating file: %v\n", err))
 			return
 		}
 		isEmpty := fileInfo.Size() == 0
@@ -89,7 +89,7 @@ func RecordFuncTime(blockNr uint64, stagestate string, err bool, start time.Time
 		if isEmpty {
 			header := []string{"BlockNr", "Func/StageState", "Error", "Start Time", "End Time", "Duration", "Relevant Tx"}
 			if err := writer.Write(header); err != nil {
-				logger.Error("Error writing header to CSV: %v\n", err)
+				logger.Error(fmt.Sprintf("Error writing header to CSV: %v\n", err))
 				return
 			}
 		}
@@ -106,7 +106,7 @@ func RecordFuncTime(blockNr uint64, stagestate string, err bool, start time.Time
 
 		// Write the data to the CSV file
 		if err := writer.Write(data); err != nil {
-			logger.Error("Error writing to CSV: %v\n", err)
+			logger.Error(fmt.Sprintf("Error writing to CSV: %v\n", err))
 		}
 	}
 }
@@ -202,7 +202,7 @@ func SpawnWitnessStage(s *StageState, rootTx kv.RwTx, cfg WitnessCfg, ctx contex
 		}
 		if block == nil {
 			RecordFuncTime(s.BlockNumber, string(s.ID), true, start, time.Now(), logger)
-			return fmt.Errorf("block %d not found while generating witness", blockNr)
+			return fmt.Errorf(fmt.Sprintf("block %d not found while generating witness", blockNr))
 		}
 
 		prevHeader, err := cfg.blockReader.HeaderByNumber(ctx, tx, blockNr-1)
@@ -233,7 +233,7 @@ func SpawnWitnessStage(s *StageState, rootTx kv.RwTx, cfg WitnessCfg, ctx contex
 		}
 		if w == nil {
 			RecordFuncTime(s.BlockNumber, string(s.ID), false, start, time.Now(), logger)
-			return fmt.Errorf("unable to generate witness for block %d", blockNr)
+			return fmt.Errorf(fmt.Sprintf("unable to generate witness for block %d", blockNr))
 		}
 
 		var buf bytes.Buffer
@@ -246,7 +246,7 @@ func SpawnWitnessStage(s *StageState, rootTx kv.RwTx, cfg WitnessCfg, ctx contex
 		_, err = VerifyWitness(tx, block, prevHeader, true, 0, store.ChainReader, store.Tds, txTds, store.GetHashFn, &cfg, &buf, logger)
 		if err != nil {
 			RecordFuncTime(s.BlockNumber, string(s.ID), true, start, time.Now(), logger)
-			return fmt.Errorf("error verifying witness for block %d: %v", blockNr, err)
+			return fmt.Errorf(fmt.Sprintf("error verifying witness for block %d: %v", blockNr, err))
 		}
 
 		// Check if we already have a witness for the same block (can happen during a reorg)
@@ -256,7 +256,7 @@ func SpawnWitnessStage(s *StageState, rootTx kv.RwTx, cfg WitnessCfg, ctx contex
 			err = DeleteChunks(rootTx, kv.Witnesses, Uint64ToBytes(blockNr))
 			if err != nil {
 				RecordFuncTime(s.BlockNumber, string(s.ID), true, start, time.Now(), logger)
-				return fmt.Errorf("error deletig witness for block %d: %v", blockNr, err)
+				return fmt.Errorf(fmt.Sprintf("error deletig witness for block %d: %v", blockNr, err))
 			}
 		}
 
@@ -265,7 +265,7 @@ func SpawnWitnessStage(s *StageState, rootTx kv.RwTx, cfg WitnessCfg, ctx contex
 		err = WriteChunks(rootTx, kv.Witnesses, Uint64ToBytes(blockNr), buf.Bytes())
 		if err != nil {
 			RecordFuncTime(s.BlockNumber, string(s.ID), true, start, time.Now(), logger)
-			return fmt.Errorf("error writing witness for block %d: %v", blockNr, err)
+			return fmt.Errorf(fmt.Sprintf("error writing witness for block %d: %v", blockNr, err))
 		}
 
 		// Update the stage with the latest block number
@@ -282,7 +282,7 @@ func SpawnWitnessStage(s *StageState, rootTx kv.RwTx, cfg WitnessCfg, ctx contex
 				err = DeleteChunks(rootTx, kv.Witnesses, Uint64ToBytes(i))
 				if err != nil {
 					RecordFuncTime(s.BlockNumber, string(s.ID), true, start, time.Now(), logger)
-					return fmt.Errorf("error deleting witness for block %d: %v", i, err)
+					return fmt.Errorf(fmt.Sprintf("error deleting witness for block %d: %v", i, err))
 				}
 			}
 		}
@@ -483,7 +483,7 @@ func GenerateWitness(tx kv.Tx, block *types.Block, prevHeader *types.Header, ful
 
 	if fullBlock && !bytes.Equal(prevHeader.Root[:], triePreroot[:]) {
 		RecordFuncTime(blockNr, "GenerateWitness", true, start, time.Now(), logger)
-		return nil, nil, fmt.Errorf("mismatch in expected state root computed %v vs %v indicates bug in witness implementation", prevHeader.Root, triePreroot)
+		return nil, nil, fmt.Errorf(fmt.Sprintf("mismatch in expected state root computed %v vs %v indicates bug in witness implementation", prevHeader.Root, triePreroot))
 	}
 
 	if err := tds.ResolveStateTrieWithFunc(loadFunc); err != nil {
@@ -541,7 +541,7 @@ func VerifyWitness(tx kv.Tx, block *types.Block, prevHeader *types.Header, fullB
 		receipt, _, err := core.ApplyTransaction(cfg.chainConfig, getHashFn, cfg.engine, nil, gp, ibs, s, header, txn, usedGas, usedBlobGas, vmConfig)
 		if err != nil {
 			RecordFuncTime(blockNr, "VerifyWitness", true, start, time.Now(), logger)
-			return nil, fmt.Errorf("tx %x failed: %v", txn.Hash(), err)
+			return nil, fmt.Errorf(fmt.Sprintf("tx %x failed: %v", txn.Hash(), err))
 		}
 		receipts = append(receipts, receipt)
 	}
@@ -581,17 +581,17 @@ func VerifyWitness(tx kv.Tx, block *types.Block, prevHeader *types.Header, fullB
 	receiptSha := types.DeriveSha(receipts)
 	if !vmConfig.StatelessExec && cfg.chainConfig.IsByzantium(block.NumberU64()) && !vmConfig.NoReceipts && receiptSha != block.ReceiptHash() {
 		RecordFuncTime(blockNr, "VerifyWitness", true, start, time.Now(), logger)
-		return nil, fmt.Errorf("mismatched receipt headers for block %d (%s != %s)", block.NumberU64(), receiptSha.Hex(), block.ReceiptHash().Hex())
+		return nil, fmt.Errorf(fmt.Sprintf("mismatched receipt headers for block %d (%s != %s)", block.NumberU64(), receiptSha.Hex(), block.ReceiptHash().Hex()))
 	}
 
 	if !vmConfig.StatelessExec && *usedGas != header.GasUsed {
 		RecordFuncTime(blockNr, "VerifyWitness", true, start, time.Now(), logger)
-		return nil, fmt.Errorf("gas used by execution: %d, in header: %d", *usedGas, header.GasUsed)
+		return nil, fmt.Errorf(fmt.Sprintf("gas used by execution: %d, in header: %d", *usedGas, header.GasUsed))
 	}
 
 	if header.BlobGasUsed != nil && *usedBlobGas != *header.BlobGasUsed {
 		RecordFuncTime(blockNr, "VerifyWitness", true, start, time.Now(), logger)
-		return nil, fmt.Errorf("blob gas used by execution: %d, in header: %d", *usedBlobGas, *header.BlobGasUsed)
+		return nil, fmt.Errorf(fmt.Sprintf("blob gas used by execution: %d, in header: %d", *usedBlobGas, *header.BlobGasUsed))
 	}
 
 	var bloom types.Bloom
@@ -599,7 +599,7 @@ func VerifyWitness(tx kv.Tx, block *types.Block, prevHeader *types.Header, fullB
 		bloom = types.CreateBloom(receipts)
 		if !vmConfig.StatelessExec && bloom != header.Bloom {
 			RecordFuncTime(blockNr, "VerifyWitness", true, start, time.Now(), logger)
-			return nil, fmt.Errorf("bloom computed by execution: %x, in header: %x", bloom, header.Bloom)
+			return nil, fmt.Errorf(fmt.Sprintf("bloom computed by execution: %x, in header: %x", bloom, header.Bloom))
 		}
 	}
 
@@ -616,7 +616,7 @@ func VerifyWitness(tx kv.Tx, block *types.Block, prevHeader *types.Header, fullB
 
 		if err := ibs.CommitBlock(rules, s); err != nil {
 			RecordFuncTime(blockNr, "VerifyWitness", true, start, time.Now(), logger)
-			return nil, fmt.Errorf("committing block %d failed: %v", block.NumberU64(), err)
+			return nil, fmt.Errorf(fmt.Sprintf("committing block %d failed: %v", block.NumberU64(), err))
 		}
 	}
 
@@ -633,7 +633,7 @@ func VerifyWitness(tx kv.Tx, block *types.Block, prevHeader *types.Header, fullB
 
 	if roots[len(roots)-1] != block.Root() {
 		RecordFuncTime(blockNr, "VerifyWitness", true, start, time.Now(), logger)
-		return nil, fmt.Errorf("mismatch in expected state root computed %v vs %v indicates bug in witness implementation", roots[len(roots)-1], block.Root())
+		return nil, fmt.Errorf(fmt.Sprintf("mismatch in expected state root computed %v vs %v indicates bug in witness implementation", roots[len(roots)-1], block.Root()))
 	}
 
 	RecordFuncTime(blockNr, "VerifyWitness", false, start, time.Now(), logger)
